@@ -29,13 +29,22 @@ This setup provides a complete knowledge graph system with:
 
 - Python 3.11+
 - Virtual environment
-- API keys for MiniMax and OpenAI (for embeddings)
+- API keys:
+  - MiniMax API key (for LLM)
+  - OpenAI API key (for embeddings)
 - Qdrant instance (self-hosted or cloud)
 - Memgraph instance
 
-## Installation
+## Quick Start
 
-### 1. Create Virtual Environment
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/Zurybr/cognee-minimax-setup.git
+cd cognee-minimax-setup
+```
+
+### 2. Create Virtual Environment
 
 ```bash
 python3 -m venv venv-cognee
@@ -44,7 +53,7 @@ source venv-cognee/bin/activate  # Linux/Mac
 venv-cognee\Scripts\activate  # Windows
 ```
 
-### 2. Install Dependencies
+### 3. Install Dependencies
 
 ```bash
 pip install cognee
@@ -53,9 +62,15 @@ pip install cognee-community-graph-adapter-memgraph
 pip install python-dotenv anthropic
 ```
 
-### 3. Environment Configuration
+### 4. Configure Environment
 
-Create `.env` file:
+Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your API keys:
 
 ```env
 # ============================================
@@ -63,7 +78,7 @@ Create `.env` file:
 # ============================================
 LLM_PROVIDER=anthropic
 LLM_MODEL=MiniMax-M2.5
-LLM_API_KEY=your_minimax_api_key
+LLM_API_KEY=your_minimax_api_key_here
 LLM_ENDPOINT=https://api.minimax.io/anthropic
 
 # ============================================
@@ -71,7 +86,7 @@ LLM_ENDPOINT=https://api.minimax.io/anthropic
 # ============================================
 EMBEDDING_PROVIDER=openai
 EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_API_KEY=your_openai_api_key
+EMBEDDING_API_KEY=your_openai_api_key_here
 EMBEDDING_DIMENSIONS=1536
 
 # ============================================
@@ -85,7 +100,7 @@ VECTOR_DB_KEY=your_qdrant_api_key
 # Graph Store - Memgraph
 # ============================================
 GRAPH_DATABASE_PROVIDER=memgraph
-GRAPH_DATABASE_URL=bolt://your-memgraph-ip:7687
+GRAPH_DATABASE_URL=bolt://your-memgraph-host:7687
 GRAPH_DATABASE_USERNAME=your_username
 GRAPH_DATABASE_PASSWORD=your_password
 
@@ -96,6 +111,81 @@ ENABLE_BACKEND_ACCESS_CONTROL=false
 ENVIRONMENT=development
 ```
 
+### 5. Run Tests
+
+```bash
+python test_cognee_setup.py
+```
+
+Expected output:
+```
+🚀 Iniciando prueba de Cognee
+==================================================
+📍 Qdrant: https://your-qdrant-instance.com
+📍 Memgraph: bolt://your-memgraph-host:7687
+📍 LLM Provider: anthropic
+✅ Adaptador Qdrant registrado
+✅ Adaptador Memgraph registrado
+
+1️⃣ Agregando datos de prueba...
+✅ Datos agregados correctamente
+
+2️⃣ Creando knowledge graph (cognify)...
+✅ Knowledge graph creado
+
+3️⃣ Buscando información...
+✅ Búsqueda exitosa. Resultados: 2
+
+🎉 TODAS LAS PRUEBAS PASARON
+```
+
+## Using Cognee CLI
+
+### Installation
+
+```bash
+pip install cognee
+```
+
+### Basic Commands
+
+```bash
+# Add data
+cognee add "Your text here" --dataset my_dataset
+
+# Process into knowledge graph
+cognee cognify --dataset my_dataset
+
+# Search
+cognee search "Your query" --dataset my_dataset
+
+# Prune data
+cognee prune
+```
+
+### Python API Usage
+
+```python
+import asyncio
+import cognee
+from cognee.api.v1.add import add
+from cognee.api.v1.cognify import cognify
+from cognee.api.v1.search import search
+
+async def main():
+    # Add documents
+    await add("Your text here", "my_dataset")
+    
+    # Create knowledge graph
+    await cognify("my_dataset")
+    
+    # Search
+    results = await search("Your question", "my_dataset")
+    print(results)
+
+asyncio.run(main())
+```
+
 ## Configuration Details
 
 ### MiniMax Setup
@@ -104,7 +194,9 @@ MiniMax provides an Anthropic-compatible API endpoint:
 
 - **Base URL**: `https://api.minimax.io/anthropic`
 - **Models**: `MiniMax-M2.5`, `MiniMax-M2.1`, `MiniMax-M2`
-- **Cost**: ~$0.30/M tokens (much cheaper than OpenAI)
+- **Cost**: ~$0.30/M tokens input, $1.20/M tokens output
+
+Get your API key from: https://platform.minimax.io
 
 ### Qdrant Setup
 
@@ -122,45 +214,6 @@ Standard Bolt connection:
 
 ```env
 GRAPH_DATABASE_URL=bolt://31.97.214.150:7687
-```
-
-## Usage
-
-### Basic Test Script
-
-```python
-#!/usr/bin/env python3
-import asyncio
-import os
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv(".env")
-
-# Import adapters
-import cognee_community_vector_adapter_qdrant.register
-from cognee_community_graph_adapter_memgraph import register as register_memgraph
-register_memgraph()
-
-# Import Cognee
-import cognee
-from cognee.api.v1.cognify import cognify
-from cognee.api.v1.search import search
-from cognee.api.v1.add import add
-
-async def test_cognee():
-    # Add data
-    await add("Your text here", "dataset_name")
-    
-    # Create knowledge graph
-    await cognify("dataset_name")
-    
-    # Search
-    results = await search("Your query", "dataset_name")
-    print(results)
-
-if __name__ == "__main__":
-    asyncio.run(test_cognee())
 ```
 
 ## Code Modifications
@@ -259,11 +312,47 @@ VECTOR_DB_URL=https://qdrant.e6labs.lat  # Not :6333
 | MiniMax M2.5 | $0.30/M | $1.20/M | Cheaper than GPT-4 |
 | OpenAI Embeddings | $0.02/M | - | For vectors |
 
-## Files
+## Memory Management with Cognee
 
-- `.env` - Environment configuration
-- `test_connection.py` - Test script
-- `README.md` - This file
+Cognee can be used to create persistent memory for AI agents:
+
+```python
+import asyncio
+import cognee
+from cognee.api.v1.add import add
+from cognee.api.v1.cognify import cognify
+from cognee.api.v1.search import search
+
+async def add_memory(text: str, category: str = "general"):
+    """Add information to agent memory"""
+    await add(text, f"memory_{category}")
+    await cognify(f"memory_{category}")
+
+async def recall(query: str, category: str = "general"):
+    """Recall information from agent memory"""
+    results = await search(query, f"memory_{category}")
+    return results
+
+# Usage
+asyncio.run(add_memory("User prefers concise answers", "preferences"))
+results = asyncio.run(recall("What does user prefer?", "preferences"))
+```
+
+## Additional Resources
+
+- [Cognee Documentation](https://docs.cognee.ai/)
+- [Cognee CLI Overview](https://docs.cognee.ai/cognee-cli/overview)
+- [MiniMax Documentation](https://platform.minimax.io/docs)
+- [Qdrant Documentation](https://qdrant.tech/documentation/)
+- [Memgraph Documentation](https://memgraph.com/docs)
+
+## Files in This Repository
+
+- `.env.example` - Environment configuration template
+- `.gitignore` - Git ignore rules
+- `README.md` - This documentation
+- `test_cognee_setup.py` - Main test script
+- `test_*.py` - Various test scripts used during development
 
 ## Credits
 
@@ -272,3 +361,5 @@ Setup created for Brandom's AI infrastructure using:
 - MiniMax API
 - Qdrant Vector DB
 - Memgraph Graph DB
+
+Repository: https://github.com/Zurybr/cognee-minimax-setup
